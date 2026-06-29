@@ -11,8 +11,11 @@ dependencies {
 
     implementation(compose.desktop.currentOs)
     implementation(libs.kotlinx.coroutinesSwing)
+    implementation(libs.ktor.client.cio)
 
     implementation(libs.compose.uiToolingPreview)
+
+    testImplementation(kotlin("test"))
 }
 
 compose.desktop {
@@ -20,9 +23,19 @@ compose.desktop {
         mainClass = "ru.arny.obsidiansync.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "ru.arny.obsidiansync"
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb)
+            includeAllModules = true
+            packageName = "ObsiDelta Sync"
             packageVersion = "1.0.0"
+            windows {
+                iconFile.set(project.file("src/main/resources/icon.ico"))
+            }
+            linux {
+                iconFile.set(project.file("src/main/resources/icon.png"))
+            }
+            macOS {
+                iconFile.set(project.file("src/main/resources/icon.icns"))
+            }
         }
     }
 }

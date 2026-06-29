@@ -1,35 +1,101 @@
-This is a Kotlin Multiplatform project targeting Android, iOS, Desktop (JVM).
+<p align="center">
+  <img src="docs/assets/app-icon.png" width="144" alt="ObsiDelta Sync icon">
+</p>
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+<h1 align="center">ObsiDelta Sync</h1>
 
-* [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./shared/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./shared/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./shared/src/jvmMain/kotlin)
-    folder is the appropriate location.
+<p align="center">
+  Клиент синхронизации Obsidian Vault через Яндекс Диск для Desktop и Android,<br>
+  построенный на Kotlin Multiplatform и Compose Multiplatform.
+</p>
 
-### Running the apps
+<p align="center">
+  <img src="docs/screenshots/desktop-app.jpg" width="68%" alt="ObsiDelta Sync for Desktop">
+  <img src="docs/screenshots/mobile-app.jpg" width="27%" alt="ObsiDelta Sync for Android">
+</p>
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
+## Что решает приложение
 
-- Android app: `./gradlew :androidApp:assembleDebug`
-- Desktop app:
-  - Hot reload: `./gradlew :desktopApp:hotRun --auto`
-  - Standard run: `./gradlew :desktopApp:run`
-- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+ObsiDelta Sync сравнивает локальное и облачное состояние Vault по SHA-256, показывает найденные различия и переносит только реальные изменения. Повторный запуск без изменений не создаёт новый облачный пакет и не применяет файлы повторно.
 
-### Running tests
+- одна кнопка выполняет проверку Vault, проверку облака и синхронизацию;
+- прогресс показывает текущий этап и обрабатываемый файл;
+- новые, изменённые и удалённые файлы фиксируются в delta-пакетах;
+- при конфликте показываются изменённые участки локальной и облачной версий;
+- можно оставить облачную, вернуть локальную или сохранить обе рядом как отдельные синхронизируемые файлы;
+- после 10 пакетов создаётся полный checkpoint, а старые пакеты удаляются;
+- OAuth-токен хранится локально в зашифрованном виде и удаляется кнопкой «Отключить».
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+Автоматически синхронизируются текстовые форматы `.md`, `.txt`, `.json` и `.canvas`. Медиафайлы и бинарные файлы в текущей версии не отправляются.
 
-- Android tests: `./gradlew :shared:testAndroidHostTest`
-- Desktop tests: `./gradlew :shared:jvmTest`
-- iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
+## Состояние платформ
 
----
+| Платформа | Состояние |
+|---|---|
+| Windows Desktop | Полная ручная синхронизация. Portable-сборка содержит собственный JVM runtime и не требует установленной Java. |
+| Android | Полная ручная синхронизация через Android Storage Access Framework. |
+| iOS | Общий Compose-интерфейс собирается, но платформенный шлюз к Vault и безопасному хранилищу токена ещё не реализован. Workflow публикует unsigned Simulator build, не IPA для App Store. |
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+## Как устроена синхронизация
+
+1. Приложение сканирует поддерживаемые файлы и вычисляет SHA-256.
+2. Из Яндекс Диска загружаются только ещё не применённые пакеты.
+3. Перед заменой конфликтующего локального файла создаётся резервная копия и появляется карточка выбора версии.
+4. «Оставить облачную» закрывает конфликт с текущим файлом; «Вернуть локальную» восстанавливает копию; «Сохранить обе рядом» создаёт `*.local-copy-<timestamp>.*`. Локальная версия сразу публикуется новым изменением.
+5. После применения облака выполняется повторное сравнение снимков.
+6. Новый пакет публикуется только при наличии изменений. При достижении лимита журнал сворачивается в один checkpoint.
+
+Служебные файлы `.obsidelta`, Git, корзина Obsidian, временные файлы и device-specific workspace-файлы исключаются из снимка.
+
+> Содержимое Vault хранится на Яндекс Диске без дополнительного end-to-end шифрования со стороны приложения. Шифруется только локально сохранённый OAuth-токен.
+
+## Сборка
+
+Требования: JDK 21, Android SDK; для iOS — macOS и Xcode.
+
+```powershell
+# тесты и проверки
+.\gradlew.bat clean check
+
+# Android APK и AAB
+.\gradlew.bat :androidApp:assembleRelease :androidApp:bundleRelease
+
+# portable Desktop с JVM рядом с exe
+.\gradlew.bat :desktopApp:createReleaseDistributable
+
+# native Desktop-пакеты текущей ОС
+.\gradlew.bat :desktopApp:packageReleaseDistributionForCurrentOS
+```
+
+Portable Windows-приложение появляется в `desktopApp/build/compose/binaries/main/app/`. Для запуска на другом компьютере нужно переносить всю папку, а не только `.exe`.
+
+## Релизы
+
+Workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) запускается по тегу `v*` или вручную. Он собирает:
+
+- Windows portable ZIP и native packages;
+- подписанные Android APK и AAB;
+- unsigned iOS Simulator ZIP;
+- единый GitHub Release со всеми артефактами.
+
+Для Android необходимо добавить в GitHub Actions Secrets:
+
+- `ANDROID_KEYSTORE_BASE64` — JKS/PKCS12-файл в Base64;
+- `ANDROID_KEYSTORE_PASSWORD`;
+- `ANDROID_KEY_ALIAS`;
+- `ANDROID_KEY_PASSWORD`.
+
+Пример создания значения Base64 в PowerShell:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("release.jks"))
+```
+
+## Структура проекта
+
+- `shared` — Compose UI, модели протокола, сравнение снимков, публикация и REST-клиент Яндекс Диска;
+- `desktopApp` — файловая система Desktop, локальное безопасное хранилище и JVM packaging;
+- `androidApp` — Storage Access Framework, Android Keystore и Android UI host;
+- `iosApp` — iOS host для общего Compose-интерфейса.
+
+Проект не связан с командами Obsidian или Яндекса и использует их продукты и API независимо.
