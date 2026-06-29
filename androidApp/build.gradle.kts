@@ -1,9 +1,40 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-val releaseKeystorePath = providers.environmentVariable("ANDROID_KEYSTORE_PATH").orNull
-val releaseKeystorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").orNull
-val releaseKeyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS").orNull
-val releaseKeyPassword = providers.environmentVariable("ANDROID_KEY_PASSWORD").orNull
+fun loadLocalSecrets(fileName: String) = Properties().apply {
+    rootProject.file(fileName)
+        .takeIf { it.isFile }
+        ?.inputStream()
+        ?.use(::load)
+}
+
+val signingProperties = loadLocalSecrets("secret.properties")
+val dotEnvProperties = loadLocalSecrets(".env")
+
+fun String.normalizedSecret(): String? = trim()
+    .removeSurrounding("\"")
+    .removeSurrounding("'")
+    .takeIf(String::isNotBlank)
+
+fun signingValue(name: String): String? =
+    providers.environmentVariable(name).orNull?.takeIf(String::isNotBlank)
+        ?: signingProperties.getProperty(name)?.normalizedSecret()
+        ?: dotEnvProperties.getProperty(name)?.normalizedSecret()
+
+val releaseKeystorePath = signingValue("ANDROID_KEYSTORE_PATH")
+val releaseKeystorePassword = signingValue("ANDROID_KEYSTORE_PASSWORD")
+val releaseKeyAlias = signingValue("ANDROID_KEY_ALIAS")
+val releaseKeyPassword = signingValue("ANDROID_KEY_PASSWORD")
+val releaseSigningValues = listOf(
+    releaseKeystorePath,
+    releaseKeystorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+)
+
+check(releaseSigningValues.none { it != null } || releaseSigningValues.all { it != null }) {
+    "Android release signing настроен не полностью. Заполните все ANDROID_* значения в environment, secret.properties или .env."
+}
 
 plugins {
     alias(libs.plugins.androidApplication)
@@ -46,7 +77,7 @@ android {
             releaseKeyPassword != null
         ) {
             create("release") {
-                storeFile = file(releaseKeystorePath)
+                storeFile = rootProject.file(releaseKeystorePath)
                 storePassword = releaseKeystorePassword
                 keyAlias = releaseKeyAlias
                 keyPassword = releaseKeyPassword

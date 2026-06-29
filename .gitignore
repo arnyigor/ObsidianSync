@@ -17,3 +17,13 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+/androidApp/release/
+.env
+.env.*
+!.env.example
+secret.properties
+secret.properties.*
+!secret.properties.example
+*.jks
+*.keystore
+*.p12
