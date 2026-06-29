@@ -138,6 +138,6 @@ jobs:
       - name: Create or update release
         shell: bash
         run: |
-          gh release view "$RELEASE_TAG" >/dev/null 2>&1 || \
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --generate-notes
           find release-assets -type f -print0 | xargs -0 gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber
