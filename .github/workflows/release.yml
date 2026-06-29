@@ -89,7 +89,17 @@ jobs:
 
   ios:
     name: iOS simulator
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-26
+            artifact_arch: arm64
+            xcode_arch: arm64
+          - runner: macos-26-intel
+            artifact_arch: x64
+            xcode_arch: x86_64
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
@@ -106,6 +116,9 @@ jobs:
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build/ios \
+            ARCHS='${{ matrix.xcode_arch }}' \
+            ONLY_ACTIVE_ARCH=YES \
+            IPHONEOS_DEPLOYMENT_TARGET=14.0 \
             CODE_SIGNING_ALLOWED=NO \
             build
       - name: Collect iOS asset
@@ -114,10 +127,10 @@ jobs:
           mkdir -p release-assets
           APP_PATH="$(find build/ios/Build/Products/Release-iphonesimulator -maxdepth 1 -type d -name '*.app' -print -quit)"
           test -n "$APP_PATH" || { echo "iOS application was not produced"; exit 1; }
-          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" release-assets/ObsiDelta-Sync-iOS-Simulator.zip
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "release-assets/ObsiDelta-Sync-iOS-Simulator-${{ matrix.artifact_arch }}.zip"
       - uses: actions/upload-artifact@v7
         with:
-          name: release-ios
+          name: release-ios-${{ matrix.artifact_arch }}
           path: release-assets/*
           if-no-files-found: error
 

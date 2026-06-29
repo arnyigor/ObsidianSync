@@ -100,8 +100,24 @@ Workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) зап
 
 - Windows portable ZIP и native packages;
 - подписанные Android APK и AAB;
-- unsigned iOS Simulator ZIP;
+- unsigned iOS Simulator ZIP для Apple Silicon (`arm64`) и Intel (`x64`);
 - единый GitHub Release со всеми артефактами.
+
+### Проверка iOS на macOS Monterey 12.6
+
+Monterey 12.6 поддерживает Xcode 14.2 и Simulator iOS 16.2. Используйте готовый архив из релиза по архитектуре Mac:
+
+- `ObsiDelta-Sync-iOS-Simulator-arm64.zip` — Apple Silicon;
+- `ObsiDelta-Sync-iOS-Simulator-x64.zip` — Intel.
+
+Приложение имеет deployment target iOS 14.0. Исходный Xcode-проект требует современный Xcode для сборки; на Monterey проверяется готовый Simulator `.app`.
+
+После запуска нужного симулятора распакованное приложение можно установить командами:
+
+```bash
+xcrun simctl install booted "/path/to/ObsiDelta Sync.app"
+xcrun simctl launch booted ru.arny.obsidiansync.ObsidianSync
+```
 
 Для Android необходимо добавить в GitHub Actions Secrets:
 
