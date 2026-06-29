@@ -26,7 +26,7 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb)
             includeAllModules = true
             packageName = "ObsiDelta Sync"
-            packageVersion = "1.0.0"
+            packageVersion = "1.0.1"
             windows {
                 iconFile.set(project.file("src/main/resources/icon.ico"))
             }
